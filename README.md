@@ -245,7 +245,7 @@ tests/
 - Script integrity checks the HTML your server sends. Scripts injected later by a tag manager need that tag manager's own change log.
 
 ## Related
-- [wa-cod-lifecycle](https://github.com/dayasinghchauhan/wa-cod-lifecycle): WhatsApp COD confirmation, order-again and abandoned-cart flows for the same kind of shop.
+- [whatsapp-order-flows](https://github.com/dayasinghchauhan/whatsapp-order-flows): WhatsApp COD confirmation, address check, order again and abandoned-checkout flows for the same kind of shop.
 
 ## License
 

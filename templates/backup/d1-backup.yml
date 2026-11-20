@@ -1,0 +1,46 @@
+# .github/workflows/d1-backup.yml
+# Nightly D1 export → private R2 bucket, with a DATED key the watchdog can find:
+#   db/backup-2026-11-20T03-00-00.sql
+#
+# Repo secrets: CLOUDFLARE_API_TOKEN (D1 Edit + R2 Edit on this account), CLOUDFLARE_ACCOUNT_ID
+# Repo vars:    D1_NAME (database name), BACKUP_BUCKET_NAME (R2 bucket NAME, not binding)
+#
+# Pair it with an external "did it run" check: GitHub can silently skip scheduled
+# workflows (repo inactive 60 days, Actions minutes used up). The watchdog's
+# "backup is late" alert is that check.
+name: Daily database backup
+on:
+  schedule:
+    - cron: "30 21 * * *"     # 21:30 UTC daily; pick a quiet hour for your users
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 d1 export "${{ vars.D1_NAME }}" --remote --output backup.sql
+      - name: Check the dump is not empty
+        run: |
+          test -s backup.sql
+          grep -q "CREATE TABLE" backup.sql
+      - name: Upload to R2 (dated key)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          KEY="db/backup-$(date -u +%Y-%m-%dT%H-%M-%S).sql"
+          npx --yes wrangler@4 r2 object put "${{ vars.BACKUP_BUCKET_NAME }}/$KEY" --file backup.sql --content-type application/sql --remote
+          echo "uploaded $KEY"
+# Retention: add an R2 lifecycle rule on the bucket (e.g. delete db/ objects after 30 days)
+# instead of deleting from this workflow.

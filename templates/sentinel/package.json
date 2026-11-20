@@ -1,0 +1,9 @@
+{
+  "name": "site-sentinel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  }
+}

@@ -1,0 +1,39 @@
+# Sentinel: uptime + SOC + decoy mailbox. A separate Worker, deliberately NOT part of the site it watches.
+name = "site-sentinel"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# "* * * * *"   uptime tick (clock 1 of 2; clock 2 = an external pinger calling GET /run)
+# "*/5 * * * *" SOC run (src/soc/run.js) - must match SOC_CRON in src/index.js
+# Workers Free allows 5 cron triggers per ACCOUNT.
+[triggers]
+crons = ["* * * * *", "*/5 * * * *"]
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"      # npx wrangler kv namespace create STATE
+
+# The SITE's D1: the SOC reads security_events and snapshots, and keeps its cases there
+# (so your admin can show them). Same database_id as the site.
+[[d1_databases]]
+binding = "DB"
+database_name = "REPLACE_WITH_DB_NAME"
+database_id = "REPLACE_WITH_DB_ID"
+
+[vars]
+STATE_FLUSH_MIN = "0"      # 15 on the Workers Free plan (1,000 KV writes/day)
+# SOC_RULES = '{"admin_new_network":{"sev":"MEDIUM"}}'   # optional per-rule overrides (see SKILL.md)
+
+# Secrets (npx wrangler secret put <NAME>):
+#   WATCHDOG_KEY      same value as the site
+#   RUN_KEY           key for every route (defaults to WATCHDOG_KEY)
+#   DISCORD_WEBHOOK   and/or SLACK_WEBHOOK, NTFY_URL (phone push)
+#   REPORT_WEBHOOK    optional channel for the weekly uptime report + daily security summary
+#   HC_PING_URL       optional Healthchecks.io dead-man switch
+#   CF_TOKEN          Cloudflare API token for posture / blocks / deploy marker (references/cloudflare-token.md)
+#   CF_ACCOUNT        Cloudflare account id
+#   HONEY_HASHES      same JSON as the site (decoy mailbox)
